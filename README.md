@@ -252,12 +252,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.
 
 ---
 
-## Relationship to AgentMesh
-
-PolicyBot is a focused, standalone tool. If you also use [AgentMesh](https://github.com/your-org/agentmesh), the `PolicyAgent` in AgentMesh builds on the same concept — but adds cross-repo blast radius analysis, a persistent knowledge graph, and the ability to query compliance history. PolicyBot has no dependency on AgentMesh and works independently.
-
----
-
 ## License
 
 MIT
