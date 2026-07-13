@@ -132,7 +132,7 @@ uv run pytest --cov=policybot -q
 - **Language detection** (`policybot/detector.py`) — add extension mappings or framework signals
 - **Prompt engineering** (`policybot/reviewer.py`) — improve how standards are presented to Claude
 - **Comment formatting** (`policybot/commenter.py`) — make inline comments clearer
-- **Standards content** (`standards/`, `adrs/`) — improve or add new standards docs
+- **Standards content** (`policies/standards/`, `policies/adrs/`) — improve or add new standards docs
 - **Test coverage** (`tests/`) — `cli.py` and `github_client.py` have room for more tests
 
 ---

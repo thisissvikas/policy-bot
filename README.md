@@ -27,19 +27,19 @@ PolicyBot closes the gap differently: it reviews against the documents you wrote
 ```
   This repo (standards + bot)          Any org repo (PR opened)
   ┌──────────────────────────┐
-  │ standards/               │          ┌─────────────────────────┐
-  │   python.md              │          │  PR diff                │
-  │   typescript.md          ├────────► │  + detected languages   │
-  │   django.md              │          │  + changed file paths   │
-  │   react.md               │          └────────────┬────────────┘
-  │                          │                       │
-  │ adrs/                    │                       ▼
-  │   ADR-001-api.md         │          ┌─────────────────────────┐
-  │   ADR-007-repo.md        ├────────► │   PolicyBot             │
-  │   ADR-011-errors.md      │          │                         │
-  │                          │          │ 1. detect languages     │
-  │ policybot.yaml           │          │ 2. fetch relevant docs  │
-  │   source: local          │          │ 3. review diff vs docs  │
+  │ policies/                │          ┌─────────────────────────┐
+  │   standards/             │          │  PR diff                │
+  │     python.md            ├────────► │  + detected languages   │
+  │     typescript.md        │          │  + changed file paths   │
+  │     django.md            │          └────────────┬────────────┘
+  │   adrs/                  │                       │
+  │     ADR-001-api.md       │                       ▼
+  │     ADR-007-repo.md      ├────────► ┌─────────────────────────┐
+  │     ADR-011-errors.md    │          │   PolicyBot             │
+  │                          │          │                         │
+  │ policybot.yaml           │          │ 1. detect languages     │
+  │   source: local          │          │ 2. fetch relevant docs  │
+  │   root: policies         │          │ 3. review diff vs docs  │
   └──────────────────────────┘          │ 4. post inline comments │
                                         └─────────────────────────┘
 ```
@@ -89,20 +89,21 @@ Every comment cites the exact document it's enforcing. Reviewers can follow the 
 
 ### 1. This repo is your standards repo
 
-Standards and ADRs live alongside the bot code in this monorepo:
+Standards and ADRs live under `policies/` alongside the bot code in this monorepo:
 
 ```
 policy-bot/
-├── standards/
-│   ├── python.md
-│   ├── typescript.md
-│   ├── django.md
-│   └── react.md
-├── adrs/
-│   ├── ADR-001-api-versioning.md
-│   ├── ADR-007-repository-pattern.md
-│   └── ADR-011-error-handling.md
-└── policybot.yaml         # maps file patterns to standards + declares source
+├── policies/                  # default standards content (edit these)
+│   ├── standards/
+│   │   ├── python.md
+│   │   ├── typescript.md
+│   │   ├── django.md
+│   │   └── react.md
+│   └── adrs/
+│       ├── ADR-001-api-versioning.md
+│       ├── ADR-007-repository-pattern.md
+│       └── ADR-011-error-handling.md
+└── policybot.yaml             # maps file patterns to standards + declares source
 ```
 
 Edit the markdown files directly — no special syntax required.
@@ -110,9 +111,10 @@ Edit the markdown files directly — no special syntax required.
 ### 2. `policybot.yaml` — configure rules and source
 
 ```yaml
-# Standards are in this same repo (default)
+# Standards are in policies/ within this same repo
 source:
   type: local
+  root: policies        # all doc paths are relative to this folder
 
 standards:
   - match: "**/*.py"
@@ -267,15 +269,17 @@ policy-bot/
 ├── policybot.yaml              # maps file patterns → standards/ADRs
 ├── pyproject.toml              # uv-managed project + tool config
 │
-├── standards/                  # coding standards (edit these)
-│   ├── python.md
-│   ├── typescript.md
-│   ├── django.md
-│   └── react.md
+├── policies/                   # default standards content (edit or replace these)
+│   ├── standards/
+│   │   ├── python.md
+│   │   ├── typescript.md
+│   │   ├── django.md
+│   │   └── react.md
+│   └── adrs/
+│       ├── ADR-001-api-versioning.md
+│       └── ...
 │
-├── adrs/                       # architectural decision records (edit these)
-│   ├── ADR-001-api-versioning.md
-│   └── ...
+├── docs/                       # documentation (deployment, contributing, etc.)
 │
 ├── policybot/                  # bot implementation
 │   ├── models.py               # shared Pydantic v2 models
@@ -326,7 +330,7 @@ Good first areas:
 - **Language detection** — improve framework detection from file paths and imports
 - **Prompt engineering** — improve how standards + ADRs are presented to the model
 - **Comment formatting** — make inline comments clearer and more actionable
-- **Standards** — improve the reference standards in `standards/` and `adrs/`
+- **Standards** — improve the reference standards in `policies/standards/` and `policies/adrs/`
 - **Tests** — unit tests for config loading, language detection, comment posting
 
 See [docs/contributing.md](docs/contributing.md) for setup instructions, or [docs/deployment.md](docs/deployment.md) for deployment options.
