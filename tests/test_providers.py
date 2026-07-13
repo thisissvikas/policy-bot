@@ -53,12 +53,12 @@ async def test_local_provider_list_docs_missing_prefix(tmp_path: Path) -> None:
 
 
 def test_local_provider_uses_real_standards(repo_root: Path) -> None:
-    provider = LocalProvider(repo_root)
+    provider = LocalProvider(repo_root / "policies")
     assert isinstance(provider, StandardsProvider)
 
 
 async def test_local_provider_real_standards_exist(repo_root: Path) -> None:
-    provider = LocalProvider(repo_root)
+    provider = LocalProvider(repo_root / "policies")
     content = await provider.get_doc("standards/python.md")
     assert content is not None
     assert "Error Handling" in content

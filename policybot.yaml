@@ -3,6 +3,7 @@
 
 source:
   type: local
+  root: policies
 
 standards:
   - match: "**/*.py"

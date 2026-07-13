@@ -54,7 +54,7 @@ async def test_fetch_docs_concurrent(tmp_path: Path) -> None:
 
 
 async def test_fetch_docs_real_standards(repo_root: Path) -> None:
-    provider = LocalProvider(repo_root)
+    provider = LocalProvider(repo_root / "policies")
     docs = await fetch_docs(provider, ["standards/python.md", "standards/typescript.md"])
     assert "standards/python.md" in docs
     assert "standards/typescript.md" in docs

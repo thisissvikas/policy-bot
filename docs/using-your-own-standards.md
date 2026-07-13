@@ -1,6 +1,6 @@
 # Using Your Own Standards & ADRs
 
-By default PolicyBot uses the standards and ADRs in this repo (`standards/`, `adrs/`). This page covers how to replace them entirely with your org's own documents — and how the `policybot.yaml` config file controls all of it.
+By default PolicyBot uses the standards and ADRs in this repo under `policies/` (`policies/standards/`, `policies/adrs/`). This page covers how to replace them entirely with your org's own documents — and how the `policybot.yaml` config file controls all of it.
 
 ---
 
@@ -117,12 +117,12 @@ Best if you want full control over the action code itself, not just the standard
 git clone https://github.com/MY-ORG/policy-bot.git
 cd policy-bot
 
-# Replace the reference standards with yours
-rm -rf standards/ adrs/
-cp -r /path/to/your/standards standards/
-cp -r /path/to/your/adrs adrs/
+# Replace the default standards content with yours
+rm -rf policies/standards/ policies/adrs/
+cp -r /path/to/your/standards policies/standards/
+cp -r /path/to/your/adrs policies/adrs/
 
-# Update policybot.yaml rules to match
+# Update policybot.yaml rules to match (source.root stays as "policies")
 vim policybot.yaml
 
 git add . && git commit -m "Replace with org standards"

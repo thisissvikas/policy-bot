@@ -52,16 +52,16 @@ policy-bot/
 ├── pyproject.toml              # uv project + ruff/mypy/pytest config
 ├── uv.lock
 │
-├── standards/                  # coding standards — edit these
-│   ├── python.md
-│   ├── typescript.md
-│   ├── django.md
-│   └── react.md
-│
-├── adrs/                       # architectural decision records — edit these
-│   ├── ADR-001-api-versioning.md
-│   ├── ADR-007-repository-pattern.md
-│   └── ADR-011-error-handling.md
+├── policies/                   # default standards content (segregated from bot code)
+│   ├── standards/              # coding standards — edit these
+│   │   ├── python.md
+│   │   ├── typescript.md
+│   │   ├── django.md
+│   │   └── react.md
+│   └── adrs/                   # architectural decision records — edit these
+│       ├── ADR-001-api-versioning.md
+│       ├── ADR-007-repository-pattern.md
+│       └── ADR-011-error-handling.md
 │
 ├── policybot/                  # bot implementation
 │   ├── models.py               # Pydantic v2 models (Violation, ReviewResult, …)
@@ -102,8 +102,8 @@ All items shipped and verified:
 - [x] `policybot/commenter.py` — comment formatting, single-review batch posting
 - [x] `policybot/cli.py` — `policybot review --dry-run` and live posting
 - [x] `action.yml` — composite GitHub Action (uv + python, no Docker)
-- [x] `standards/` — Python, TypeScript, Django, React starter standards
-- [x] `adrs/` — ADR-001 (API versioning), ADR-007 (repository pattern), ADR-011 (error handling)
+- [x] `policies/standards/` — Python, TypeScript, Django, React starter standards
+- [x] `policies/adrs/` — ADR-001 (API versioning), ADR-007 (repository pattern), ADR-011 (error handling)
 - [x] `policybot.yaml` — root config with local source
 - [x] `.github/workflows/ci.yml` — lint + typecheck + test on every push/PR
 - [x] 88 tests passing, 85.79% coverage, `mypy --strict` clean
