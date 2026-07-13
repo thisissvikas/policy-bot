@@ -39,8 +39,14 @@ runs:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
+        # Use the caller's policybot.yaml if it exists; fall back to the action's own defaults
+        CONFIG="${{ inputs.config-path }}"
+        if [ ! -f "$CONFIG" ]; then
+          echo "No $CONFIG found in this repo — using action defaults"
+          CONFIG="${{ github.action_path }}/policybot.yaml"
+        fi
         policybot review \
-          --config "${{ inputs.config-path }}" \
+          --config "$CONFIG" \
           --pr "${{ github.event.pull_request.number }}" \
           --repo "${{ github.repository }}" \
           --model "${{ inputs.model }}"

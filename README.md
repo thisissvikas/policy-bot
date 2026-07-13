@@ -329,7 +329,7 @@ Good first areas:
 - **Standards** — improve the reference standards in `standards/` and `adrs/`
 - **Tests** — unit tests for config loading, language detection, comment posting
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.
+See [docs/contributing.md](docs/contributing.md) for setup instructions, or [docs/deployment.md](docs/deployment.md) for deployment options.
 
 ---
 
