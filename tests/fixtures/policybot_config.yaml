@@ -1,0 +1,24 @@
+source:
+  type: local
+  root: .
+
+standards:
+  - match: "**/*.py"
+    docs:
+      - standards/python.md
+    severity: warning
+  - match: "**/*.ts"
+    docs:
+      - standards/typescript.md
+    severity: warning
+
+adrs:
+  - path: adrs/ADR-007-repository-pattern.md
+    applies_to:
+      - "**/*.py"
+    severity: error
+  - path: adrs/ADR-011-error-handling.md
+    applies_to:
+      - "**/*.py"
+      - "**/*.ts"
+    severity: warning

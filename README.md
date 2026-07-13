@@ -1,8 +1,10 @@
 # PolicyBot
 
-**AI-powered code review that enforces your coding standards and architectural decisions — automatically, on every PR, across every repo.**
+**AI-powered code review that enforces your org's specific standards and architectural decisions — not generic best practices, yours.**
 
-You define your standards and ADRs once in a central place. PolicyBot reads them, understands them, and reviews every pull request against them — posting inline comments that distinguish "this violates our Python style guide" from "this conflicts with ADR-007 on the repository pattern." No linter config to copy across repos. No human has to remember to check.
+GitHub Copilot knows how code is generally written. PolicyBot knows how *your org* decided to write it. You define your standards and ADRs once, in plain markdown. PolicyBot reads them and reviews every PR against them — posting inline comments like "this violates ADR-007, the repository pattern your team adopted last March" rather than generic advice that doesn't know your context.
+
+No linter config to replicate across repos. No human who has to remember to check. No AI hallucinating advice that contradicts your actual architectural decisions.
 
 > Status: **Early Development** — GitHub Action and core review pipeline being built. Contributions welcome.
 
@@ -14,33 +16,37 @@ Your org has coding standards. They live in a wiki page nobody reads, a Confluen
 
 Neither gets enforced. Code review is inconsistent. New engineers don't know the standards exist. Existing engineers forget them under deadline pressure. The gap between "what we decided" and "what gets merged" grows quietly.
 
-PolicyBot closes that gap by making your standards and ADRs active participants in every code review.
+Generic AI review tools can flag plausible problems — but they don't know *your* decisions. They don't know that ADR-007 requires all database access to go through repository classes, or that your team specifically banned business logic in Django views. They make their best guess based on training data from the open internet.
+
+PolicyBot closes the gap differently: it reviews against the documents you wrote, not a probability distribution over public code.
 
 ---
 
 ## How it works
 
 ```
-  Central standards repo             Any org repo (PR opened)
-  ┌─────────────────────┐
-  │ standards/          │            ┌─────────────────────────┐
-  │   python.md         │            │  PR diff                │
-  │   typescript.md     ├──────────► │  + detected languages   │
-  │   django.md         │            │  + changed file paths   │
-  │   react.md          │            └────────────┬────────────┘
-  │                     │                         │
-  │ adrs/               │                         ▼
-  │   ADR-001-api.md    │            ┌─────────────────────────┐
-  │   ADR-007-repo.md   ├──────────► │   PolicyBot             │
-  │   ADR-011-errors.md │            │                         │
-  └─────────────────────┘            │ 1. detect languages     │
-                                     │ 2. fetch relevant docs  │
-                                     │ 3. review diff vs docs  │
-                                     │ 4. post inline comments │
-                                     └─────────────────────────┘
+  This repo (standards + bot)          Any org repo (PR opened)
+  ┌──────────────────────────┐
+  │ standards/               │          ┌─────────────────────────┐
+  │   python.md              │          │  PR diff                │
+  │   typescript.md          ├────────► │  + detected languages   │
+  │   django.md              │          │  + changed file paths   │
+  │   react.md               │          └────────────┬────────────┘
+  │                          │                       │
+  │ adrs/                    │                       ▼
+  │   ADR-001-api.md         │          ┌─────────────────────────┐
+  │   ADR-007-repo.md        ├────────► │   PolicyBot             │
+  │   ADR-011-errors.md      │          │                         │
+  │                          │          │ 1. detect languages     │
+  │ policybot.yaml           │          │ 2. fetch relevant docs  │
+  │   source: local          │          │ 3. review diff vs docs  │
+  └──────────────────────────┘          │ 4. post inline comments │
+                                        └─────────────────────────┘
 ```
 
 PolicyBot fetches only the standards and ADRs relevant to the languages and frameworks changed in the PR. A Python-only PR doesn't get your React standards. A PR that doesn't touch database code doesn't get ADR-007.
+
+Standards live in this repo by default, but the source is pluggable — move them to a separate repo with a one-line config change.
 
 ---
 
@@ -75,29 +81,39 @@ Two comment types, both from the same review pass:
 - `🏗️ ADR` — architectural decision violated. Links back to the ADR.
 - `📋 Standards` — coding standard violated. Links back to the standards doc.
 
+Every comment cites the exact document it's enforcing. Reviewers can follow the link to understand the reasoning, not just the rule.
+
 ---
 
 ## Setup
 
-### 1. Create your central standards repo
+### 1. This repo is your standards repo
+
+Standards and ADRs live alongside the bot code in this monorepo:
 
 ```
-my-org/engineering-standards
+policy-bot/
 ├── standards/
 │   ├── python.md
 │   ├── typescript.md
-│   ├── django.md          # framework-specific
+│   ├── django.md
 │   └── react.md
 ├── adrs/
 │   ├── ADR-001-api-versioning.md
 │   ├── ADR-007-repository-pattern.md
 │   └── ADR-011-error-handling.md
-└── policybot.yaml         # maps file patterns to standards
+└── policybot.yaml         # maps file patterns to standards + declares source
 ```
 
-### 2. Define your `policybot.yaml`
+Edit the markdown files directly — no special syntax required.
+
+### 2. `policybot.yaml` — configure rules and source
 
 ```yaml
+# Standards are in this same repo (default)
+source:
+  type: local
+
 standards:
   - match: "**/*.py"
     docs:
@@ -118,6 +134,15 @@ adrs:
     applies_to: ["**/*.py", "**/*.ts"]
 ```
 
+To move standards to a separate repo later, change `source` — nothing else changes:
+
+```yaml
+source:
+  type: github
+  repo: my-org/engineering-standards
+  ref: main
+```
+
 ### 3. Add the GitHub Action to any repo
 
 ```yaml
@@ -134,11 +159,10 @@ jobs:
     steps:
       - uses: my-org/policybot@v1
         with:
-          standards-repo: my-org/engineering-standards
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-That's it. One file per repo. When the central standards repo updates, every repo picks up the new standards on the next PR — nothing to change in each repo.
+That's it. One file per repo. When standards are updated in this repo, every repo picks them up on the next PR.
 
 ### 4. (Optional) Org-wide via GitHub App
 
@@ -171,7 +195,32 @@ ADRs work as-is — PolicyBot reads the context and decision sections and unders
 
 ---
 
-## Why not just use a linter?
+## How does this compare to tools I already have?
+
+### vs. GitHub Copilot and AI code review bots
+
+GitHub Copilot, CodeRabbit, and similar tools are trained on public code. They know general best practices. They don't know:
+
+- That your team decided in ADR-007 to always route database access through repository classes
+- That your Python standards require domain exceptions instead of generic `ValueError`
+- That business logic belongs in services, not views — because your team made that call specifically
+
+When a generic AI reviewer sees `db.session.query(...)` in a view, it might flag it or might not — it depends on whatever training data shaped its opinion that day, and the feedback changes with every model update. When PolicyBot sees the same code, it flags it against ADR-007, the decision record your team wrote, and links back to it.
+
+The difference: **generic AI reviews what's plausibly wrong. PolicyBot enforces what you decided is wrong for your codebase.**
+
+| | Generic AI review (Copilot, CodeRabbit) | PolicyBot |
+|---|---|---|
+| Source of authority | Training data (public code) | Your standards + ADRs |
+| Knows your ADRs | No | Yes |
+| Consistent across model updates | No — drifts | Yes — your docs are the truth |
+| You control what it enforces | No | Yes |
+| Explains why with your reasoning | No | Yes — cites the doc |
+| Contradicts your actual decisions | Sometimes | Never |
+
+Use both. Generic AI review catches problems nobody thought to write a standard for. PolicyBot enforces the decisions you did make deliberately.
+
+### vs. linters
 
 Linters enforce syntax and patterns. They can't enforce intent.
 
@@ -184,7 +233,15 @@ Linters enforce syntax and patterns. They can't enforce intent.
 | "No business logic in Django views" | No | Yes |
 | "Follow the architectural decision in ADR-007" | No | Yes |
 
-PolicyBot is not a replacement for linters — run both. Linters handle the mechanical rules fast and free. PolicyBot handles the semantic and architectural rules that require understanding context.
+Linters require: writing rules in a custom DSL, replicating config across repos, and expressing every constraint as an AST pattern. Standards that require understanding context — "this service layer is too thick", "this bypasses the abstraction we agreed on" — can't be expressed as linter rules.
+
+Run linters alongside PolicyBot. Linters handle the mechanical rules fast and free. PolicyBot handles the semantic and architectural rules that require reading comprehension.
+
+### vs. human code reviewers enforcing standards
+
+Human reviewers forget. They're under deadline pressure. They review in different mental states. They leave the company. Standards that exist only in humans' heads degrade the moment those humans are busy.
+
+PolicyBot is the reviewer who has read all the standards, never forgets them, and shows up for every PR.
 
 ---
 
@@ -192,11 +249,50 @@ PolicyBot is not a replacement for linters — run both. Linters handle the mech
 
 | Component | Technology | Why |
 |---|---|---|
+| Language | Python 3.12+ with `uv` | Modern, fast tooling |
 | CI integration | GitHub Actions + GitHub App | Zero-friction adoption |
 | LLM | [Claude API](https://docs.anthropic.com/) | Long context, instruction-following, inline citation |
 | Config format | YAML + Markdown | Standards stay human-readable and editable |
-| Language detection | `linguist` / file extension mapping | Lightweight, no AST needed |
+| Standards source | Pluggable provider (`local` or `github`) | Start in-repo, move later without changing the bot |
+| Language detection | File extension + import pattern matching | Lightweight, no AST needed |
 | PR interaction | GitHub REST API | Post inline review comments on specific lines |
+
+---
+
+## Project Structure
+
+```
+policy-bot/
+├── action.yml                  # GitHub Action definition (composite)
+├── policybot.yaml              # maps file patterns → standards/ADRs
+├── pyproject.toml              # uv-managed project + tool config
+│
+├── standards/                  # coding standards (edit these)
+│   ├── python.md
+│   ├── typescript.md
+│   ├── django.md
+│   └── react.md
+│
+├── adrs/                       # architectural decision records (edit these)
+│   ├── ADR-001-api-versioning.md
+│   └── ...
+│
+├── policybot/                  # bot implementation
+│   ├── models.py               # shared Pydantic v2 models
+│   ├── config.py               # policybot.yaml loader + validation
+│   ├── detector.py             # language/framework detection from diff
+│   ├── providers/
+│   │   ├── base.py             # StandardsProvider protocol
+│   │   ├── local.py            # reads from local filesystem
+│   │   └── github.py          # fetches from a remote GitHub repo
+│   ├── fetcher.py              # resolves provider + fetches docs
+│   ├── github_client.py        # httpx wrapper for GitHub REST API
+│   ├── reviewer.py             # build prompt, call Claude, parse response
+│   ├── commenter.py            # post inline comments via GitHub API
+│   └── cli.py                  # local dry-run: policybot review --dry-run
+│
+└── tests/
+```
 
 ---
 
@@ -205,38 +301,22 @@ PolicyBot is not a replacement for linters — run both. Linters handle the mech
 ### Phase 1 — Core (current)
 - [ ] GitHub Action: fetch standards + ADRs, call Claude, post inline comments
 - [ ] `policybot.yaml` config schema — file pattern → standards/ADR mapping
+- [ ] Pluggable standards source: `local` (in-repo) and `github` (remote repo)
 - [ ] Two comment types: `📋 Standards` and `🏗️ ADR`
-- [ ] Link each comment back to the source document and line
+- [ ] Link each comment back to the source document
+- [ ] `policybot review --dry-run` CLI for local testing
 
 ### Phase 2 — Org-wide
 - [ ] GitHub App — install once at org level, no per-repo workflow file
-- [ ] `agentmesh policy status` equivalent — compliance summary across repos
 - [ ] Severity levels: `error` (blocks merge) vs `warning` (informational)
 - [ ] Comment deduplication — don't re-post the same violation on re-push
+- [ ] Compliance summary across repos
 
 ### Phase 3 — Intelligence
 - [ ] Learn from dismissed comments — if reviewers consistently dismiss a finding, flag the standard for review
-- [ ] Standards coverage report — which standards have never triggered? May be redundant or too vague.
-- [ ] Auto-suggest standard updates when code patterns in merged PRs diverge from the standard
-- [ ] Support for private standards that apply to specific teams or repos only
-
----
-
-## Project Structure
-
-```
-policybot/
-├── action.yml                  # GitHub Action definition
-├── policybot/
-│   ├── config.py               # policybot.yaml loader + validation
-│   ├── detector.py             # language/framework detection from diff
-│   ├── fetcher.py              # fetch standards + ADRs from central repo
-│   ├── reviewer.py             # build prompt, call Claude, parse response
-│   ├── commenter.py            # post inline comments via GitHub API
-│   └── cli.py                  # local dry-run: policybot review <diff>
-├── tests/
-└── pyproject.toml
-```
+- [ ] Standards coverage report — which standards have never triggered?
+- [ ] Auto-suggest standard updates when merged code patterns diverge from the standard
+- [ ] Support for private standards scoped to specific teams or repos
 
 ---
 
@@ -246,6 +326,7 @@ Good first areas:
 - **Language detection** — improve framework detection from file paths and imports
 - **Prompt engineering** — improve how standards + ADRs are presented to the model
 - **Comment formatting** — make inline comments clearer and more actionable
+- **Standards** — improve the reference standards in `standards/` and `adrs/`
 - **Tests** — unit tests for config loading, language detection, comment posting
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.

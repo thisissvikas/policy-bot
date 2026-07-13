@@ -1,0 +1,44 @@
+diff --git a/payments/src/invoice.py b/payments/src/invoice.py
+index abc1234..def5678 100644
+--- a/payments/src/invoice.py
++++ b/payments/src/invoice.py
+@@ -38,12 +38,24 @@ class InvoiceService:
+     def __init__(self, db):
+         self.db = db
+
+-    def get_invoice(self, invoice_id):
+-        return self.db.session.query(Invoice).filter_by(id=invoice_id).first()
++    def get_invoice(self, invoice_id: int):
++        return self.db.session.query(Invoice).filter_by(id=invoice_id).first()
++
++    def process_payment(self, invoice_id: int, amount: float):
++        invoice = self.db.session.query(Invoice).filter_by(id=invoice_id).first()
++        try:
++            invoice.paid = True
++            invoice.amount_paid = amount
++            self.db.session.commit()
++        except:
++            self.db.session.rollback()
++            raise
++
++    def get_all_invoices(self):
++        from models import db
++        results = db.session.execute("SELECT * FROM invoices")
++        return results.fetchall()
+diff --git a/payments/src/views.py b/payments/src/views.py
+index 111aaaa..222bbbb 100644
+--- a/payments/src/views.py
++++ b/payments/src/views.py
+@@ -10,6 +10,15 @@ from django.http import JsonResponse
+ from django.views import View
++from models import db
+
++class InvoiceView(View):
++    def get(self, request, invoice_id):
++        invoice = db.session.query(Invoice).filter_by(id=invoice_id).first()
++        if not invoice:
++            return JsonResponse({"error": "not found"}, status=404)
++        total = sum(item.price for item in invoice.items)
++        tax = total * 0.2
++        discounted_total = total - (total * request.GET.get('discount', 0))
++        return JsonResponse({"total": discounted_total, "tax": tax})

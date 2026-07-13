@@ -1,0 +1,58 @@
+# PolicyBot configuration
+# Standards and ADRs live in this same repo (default source: local)
+
+source:
+  type: local
+
+standards:
+  - match: "**/*.py"
+    docs:
+      - standards/python.md
+    severity: warning
+
+  - match: "**/*.ts"
+    docs:
+      - standards/typescript.md
+    severity: warning
+
+  - match: "**/*.tsx"
+    docs:
+      - standards/typescript.md
+      - standards/react.md
+    severity: warning
+
+  - match: "**/*.jsx"
+    docs:
+      - standards/react.md
+    severity: warning
+
+  - match: "**/views.py"
+    docs:
+      - standards/django.md
+    severity: warning
+
+  - match: "**/models.py"
+    docs:
+      - standards/django.md
+    severity: warning
+
+adrs:
+  - path: adrs/ADR-001-api-versioning.md
+    applies_to:
+      - "**/routes/**"
+      - "**/api/**"
+      - "**/views.py"
+      - "**/*router*"
+    severity: error
+
+  - path: adrs/ADR-007-repository-pattern.md
+    applies_to:
+      - "**/*.py"
+    severity: error
+
+  - path: adrs/ADR-011-error-handling.md
+    applies_to:
+      - "**/*.py"
+      - "**/*.ts"
+      - "**/*.tsx"
+    severity: warning

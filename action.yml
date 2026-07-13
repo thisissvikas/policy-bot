@@ -1,0 +1,50 @@
+name: PolicyBot Review
+description: AI-powered PR review against your coding standards and ADRs
+author: thisissvikas
+
+inputs:
+  config-path:
+    description: Path to policybot.yaml
+    required: false
+    default: policybot.yaml
+  anthropic-api-key:
+    description: Anthropic API key for Claude
+    required: true
+  github-token:
+    description: GitHub token for reading diffs and posting comments
+    required: false
+    default: ${{ github.token }}
+  model:
+    description: Claude model to use
+    required: false
+    default: claude-sonnet-4-5
+
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install PolicyBot
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        uv pip install --system .
+
+    - name: Run PolicyBot
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        policybot review \
+          --config "${{ inputs.config-path }}" \
+          --pr "${{ github.event.pull_request.number }}" \
+          --repo "${{ github.repository }}" \
+          --model "${{ inputs.model }}"
+
+branding:
+  icon: shield
+  color: blue
