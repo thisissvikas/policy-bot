@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint (ruff)
+        run: uv run ruff check policybot/ tests/
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check policybot/ tests/
+
+      - name: Type check (mypy)
+        run: uv run mypy policybot/
+
+      - name: Run tests
+        run: uv run pytest --cov=policybot --cov-report=term-missing
