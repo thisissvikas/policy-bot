@@ -162,6 +162,54 @@ def test_apply_severity_maps_from_config() -> None:
     assert updated.violations[1].severity == "warning"
 
 
+async def test_review_diff_max_tokens_raises() -> None:
+    mock_response = MagicMock()
+    mock_response.content = []
+    mock_response.stop_reason = "max_tokens"
+
+    mock_client = MagicMock()
+    mock_client.messages.create = AsyncMock(return_value=mock_response)
+
+    with (
+        patch("policybot.reviewer.AsyncAnthropic", return_value=mock_client),
+        pytest.raises(RuntimeError, match="truncated"),
+    ):
+        await review_diff(
+            diff="+++ b/file.py\n+x = 1\n",
+            standards_docs={"standards/python.md": "# Python"},
+            adr_docs={},
+            api_key="test-key",
+        )
+
+
+def test_apply_severity_normalizes_dot_slash_prefix() -> None:
+    result = ReviewResult(
+        violations=[
+            Violation(
+                file="app.py", line=1, type="adr", message="x",
+                source_doc="./adrs/ADR-007.md", source_section="", severity="warning",
+            )
+        ]
+    )
+    severity_map = {"adrs/ADR-007.md": "error"}
+    updated = apply_severity(result, severity_map)
+    assert updated.violations[0].severity == "error"
+
+
+def test_apply_severity_normalizes_backslash() -> None:
+    result = ReviewResult(
+        violations=[
+            Violation(
+                file="app.py", line=1, type="standard", message="x",
+                source_doc="standards\\python.md", source_section="", severity="warning",
+            )
+        ]
+    )
+    severity_map = {"standards/python.md": "error"}
+    updated = apply_severity(result, severity_map)
+    assert updated.violations[0].severity == "error"
+
+
 def test_apply_severity_defaults_to_warning() -> None:
     result = ReviewResult(
         violations=[

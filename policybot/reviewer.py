@@ -10,6 +10,7 @@ log = structlog.get_logger()
 
 DEFAULT_MODEL = "claude-sonnet-4-5"
 DEFAULT_MAX_TOKENS = 4096
+DEFAULT_TIMEOUT = 120.0  # seconds; Anthropic SDK default is 600s which can stall CI jobs
 
 _SYSTEM_PROMPT = """\
 You are PolicyBot, an automated code reviewer. Your job is to check a PR diff \
@@ -67,7 +68,7 @@ async def review_diff(
     if not resolved_key:
         raise ValueError("ANTHROPIC_API_KEY is required")
 
-    client = AsyncAnthropic(api_key=resolved_key)
+    client = AsyncAnthropic(api_key=resolved_key, timeout=DEFAULT_TIMEOUT)
     prompt = build_prompt(diff, standards_docs, adr_docs)
 
     tool_schema: ToolParam = {
@@ -95,6 +96,13 @@ async def review_diff(
         messages=messages,
     )
 
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError(
+            "Claude response was truncated (max_tokens reached). "
+            "The diff or standards docs may be too large for a single review. "
+            "Consider splitting large PRs or reducing the number of active standards."
+        )
+
     for block in response.content:
         if block.type == "tool_use" and block.name == "report_violations":
             result = ReviewResult.model_validate(block.input)
@@ -105,13 +113,26 @@ async def review_diff(
     return ReviewResult()
 
 
+def _normalize_doc_path(path: str) -> str:
+    """Strip leading './' and normalize separators for consistent map lookups."""
+    path = path.replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    return path.lstrip("/")
+
+
 def apply_severity(
     result: ReviewResult,
     severity_map: dict[str, str],
 ) -> ReviewResult:
-    """Annotate violations with severity from config rules."""
+    """Annotate violations with severity from config rules.
+
+    Normalizes source_doc paths before lookup so that Claude returning
+    './standards/python.md' still matches a config key of 'standards/python.md'.
+    """
+    normalized_map = {_normalize_doc_path(k): v for k, v in severity_map.items()}
     updated: list[Violation] = []
     for v in result.violations:
-        severity = severity_map.get(v.source_doc, "warning")
+        severity = normalized_map.get(_normalize_doc_path(v.source_doc), "warning")
         updated.append(v.model_copy(update={"severity": severity}))
     return ReviewResult(violations=updated)

@@ -17,3 +17,12 @@ class GitHubProvider:
 
     async def list_docs(self, prefix: str = "") -> list[str]:
         return await self._client.list_contents(self._owner, self._repo, path=prefix, ref=self._ref)
+
+    async def close(self) -> None:
+        await self._client.close()
+
+    async def __aenter__(self) -> "GitHubProvider":
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        await self.close()

@@ -19,3 +19,12 @@ class LocalProvider:
         if not search_root.exists():
             return []
         return sorted(str(p.relative_to(self._root)) for p in search_root.rglob("*.md"))
+
+    async def close(self) -> None:
+        pass
+
+    async def __aenter__(self) -> "LocalProvider":
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        await self.close()

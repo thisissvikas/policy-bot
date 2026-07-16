@@ -6,7 +6,7 @@ from pathlib import Path
 
 import structlog
 
-from policybot.commenter import format_comment, post_review
+from policybot.commenter import filter_postable_violations, format_comment, post_review
 from policybot.config import ConfigError, get_relevant_docs, get_rule_severity, load_config
 from policybot.fetcher import fetch_docs
 from policybot.github_client import GitHubClient, GitHubError
@@ -85,8 +85,9 @@ async def _run_review(args: argparse.Namespace) -> int:
         return 0
 
     provider = _build_provider(config, github_token or None, config_path)
-    standards_docs = await fetch_docs(provider, standard_paths)
-    adr_docs = await fetch_docs(provider, adr_paths)
+    async with provider:
+        standards_docs = await fetch_docs(provider, standard_paths)
+        adr_docs = await fetch_docs(provider, adr_paths)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     try:
@@ -127,7 +128,10 @@ async def _run_review(args: argparse.Namespace) -> int:
     async with GitHubClient(github_token) as gh:
         try:
             commit_sha = await gh.get_pr_head_sha(owner, repo_name, args.pr)
-            await post_review(gh, owner, repo_name, args.pr, commit_sha, result.violations)
+            postable, skipped = filter_postable_violations(result.violations, diff)
+            if skipped:
+                log.warning("skipped_violations_on_removed_lines", count=skipped)
+            await post_review(gh, owner, repo_name, args.pr, commit_sha, postable)
         except GitHubError as exc:
             log.error("post_review_failed", error=str(exc))
             return 1

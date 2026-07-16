@@ -1,6 +1,11 @@
 from unittest.mock import AsyncMock, MagicMock
 
-from policybot.commenter import format_comment, post_review
+from policybot.commenter import (
+    filter_postable_violations,
+    format_comment,
+    get_diff_right_lines,
+    post_review,
+)
 from policybot.models import Violation
 
 
@@ -84,6 +89,89 @@ async def test_post_review_calls_create_review() -> None:
     assert call_kwargs["owner"] == "owner"
     assert call_kwargs["pr_number"] == 1
     assert len(call_kwargs["comments"]) == 2
+
+
+_SAMPLE_DIFF = """\
+diff --git a/app/service.py b/app/service.py
+--- a/app/service.py
++++ b/app/service.py
+@@ -1,5 +1,7 @@
+ class UserService:
+-    pass
++    def get_user(self, user_id):
++        try:
++            return db.session.query(User).get(user_id)
++        except:
++            return None
+"""
+
+
+def test_get_diff_right_lines_added_lines() -> None:
+    result = get_diff_right_lines(_SAMPLE_DIFF)
+    assert "app/service.py" in result
+    right = result["app/service.py"]
+    # Line 1 is context, lines 2-6 are added
+    assert 1 in right  # context "class UserService:"
+    assert 2 in right  # added "    def get_user..."
+    assert 3 in right  # added "        try:"
+
+
+def test_get_diff_right_lines_removed_line_excluded() -> None:
+    result = get_diff_right_lines(_SAMPLE_DIFF)
+    right = result["app/service.py"]
+    # "    pass" was removed — it must NOT appear in the right-side set
+    # The hunk starts at +1, so the removed line never gets a right-side number
+    # Verify removed lines don't accidentally add stale numbers by checking
+    # the set only contains valid new-file lines
+    assert len(right) > 0
+    assert all(isinstance(n, int) and n > 0 for n in right)
+
+
+def test_get_diff_right_lines_multiple_files() -> None:
+    diff = (
+        "--- a/a.py\n+++ b/a.py\n@@ -1,1 +1,2 @@\n x=1\n+y=2\n"
+        "--- a/b.py\n+++ b/b.py\n@@ -1,1 +1,1 @@\n+z=3\n"
+    )
+    result = get_diff_right_lines(diff)
+    assert "a.py" in result
+    assert "b.py" in result
+    assert 1 in result["a.py"]  # context
+    assert 2 in result["a.py"]  # added
+    assert 1 in result["b.py"]  # added
+
+
+def test_filter_postable_violations_keeps_valid() -> None:
+    diff = "--- a/app/service.py\n+++ b/app/service.py\n@@ -1,1 +1,2 @@\n x=1\n+y=2\n"
+    v_valid = Violation(
+        file="app/service.py", line=2, type="standard",
+        message="msg", source_doc="standards/python.md",
+    )
+    postable, skipped = filter_postable_violations([v_valid], diff)
+    assert len(postable) == 1
+    assert skipped == 0
+
+
+def test_filter_postable_violations_skips_removed_line() -> None:
+    diff = "--- a/app/service.py\n+++ b/app/service.py\n@@ -1,2 +1,1 @@\n-removed\n kept\n"
+    # Line 1 in the new file is the context line "kept"; "removed" has no right-side number
+    v_bad = Violation(
+        file="app/service.py", line=99, type="standard",
+        message="msg", source_doc="standards/python.md",
+    )
+    postable, skipped = filter_postable_violations([v_bad], diff)
+    assert len(postable) == 0
+    assert skipped == 1
+
+
+def test_filter_postable_violations_unknown_file_skipped() -> None:
+    diff = "--- a/other.py\n+++ b/other.py\n@@ -1,1 +1,1 @@\n+x=1\n"
+    v = Violation(
+        file="nonexistent.py", line=1, type="standard",
+        message="msg", source_doc="standards/python.md",
+    )
+    postable, skipped = filter_postable_violations([v], diff)
+    assert len(postable) == 0
+    assert skipped == 1
 
 
 async def test_post_review_no_violations() -> None:

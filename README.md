@@ -158,11 +158,19 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # required: PolicyBot posts inline review comments
     steps:
+      - uses: actions/checkout@v4  # required for source.type: local
+
       - uses: my-org/policybot@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
+
+> **Required:** The `permissions: pull-requests: write` declaration is mandatory. GitHub's default token does not have write access to pull requests unless the job explicitly grants it. Without it, PolicyBot will fail with a `403` when attempting to post review comments. The `ANTHROPIC_API_KEY` secret must also be added to your repo or org secrets before using this action.
+>
+> **`actions/checkout` is required** when `source.type: local` (the default). Without it, the runner workspace has no files, PolicyBot cannot find `policybot.yaml` or any local standards docs, and falls back to the action's own built-in defaults silently. GitHub's default token does not have write access to pull requests unless the job explicitly grants it. Without it, PolicyBot will fail with a `403` when attempting to post review comments. The `ANTHROPIC_API_KEY` secret must also be added to your repo or org secrets before using this action.
 
 That's it. One file per repo. When standards are updated in this repo, every repo picks them up on the next PR.
 
