@@ -78,3 +78,14 @@ async def test_github_provider_list_docs_empty_prefix(provider: GitHubProvider) 
     )
     docs = await provider.list_docs()
     assert "README.md" in docs
+
+
+async def test_github_provider_context_manager(gh_client: GitHubClient) -> None:
+    async with GitHubProvider(gh_client, "owner/repo") as p:
+        assert p is not None
+    # __aexit__ closes the underlying GitHubClient — no exception = success
+
+
+async def test_github_provider_close(gh_client: GitHubClient) -> None:
+    provider = GitHubProvider(gh_client, "owner/repo")
+    await provider.close()  # should not raise

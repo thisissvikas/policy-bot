@@ -1,5 +1,9 @@
 name: PolicyBot Review
-description: AI-powered PR review against your coding standards and ADRs
+description: >
+  AI-powered PR review against your coding standards and ADRs.
+  Must be triggered by a pull_request event — using any other trigger
+  (push, workflow_dispatch, schedule) will fail at argument parsing
+  because github.event.pull_request.number is empty on non-PR events.
 author: thisissvikas
 
 inputs:
@@ -11,7 +15,13 @@ inputs:
     description: Anthropic API key for Claude
     required: true
   github-token:
-    description: GitHub token for reading diffs and posting comments
+    description: >
+      GitHub token for reading PR diffs and posting inline review comments.
+      The token must have the `pull-requests: write` permission — the default
+      `github.token` works if the calling workflow declares:
+        permissions:
+          pull-requests: write
+      Without this permission, posting review comments will fail with a 403.
     required: false
     default: ${{ github.token }}
   model:
@@ -31,7 +41,7 @@ runs:
       shell: bash
       run: |
         cd ${{ github.action_path }}
-        uv pip install --system .
+        uv sync --frozen --no-dev
 
     - name: Run PolicyBot
       shell: bash
@@ -45,7 +55,7 @@ runs:
           echo "No $CONFIG found in this repo — using action defaults"
           CONFIG="${{ github.action_path }}/policybot.yaml"
         fi
-        policybot review \
+        uv run --project ${{ github.action_path }} policybot review \
           --config "$CONFIG" \
           --pr "${{ github.event.pull_request.number }}" \
           --repo "${{ github.repository }}" \

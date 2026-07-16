@@ -67,15 +67,28 @@ adrs:
 
 If `my-org/engineering-standards` is **public** — no extra setup needed.
 
-If it's **private**, add a PAT or use GitHub App auth:
+If it's **private**, a single `github.token` cannot cross repository boundaries. You must supply a token that covers both the target repo (to read the diff and post comments) and the standards repo (to fetch docs):
 
 ```yaml
 # in the target repo's workflow
 - uses: thisissvikas/policy-bot@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-    github-token: ${{ secrets.ORG_STANDARDS_PAT }}   # PAT with repo read scope
+    github-token: ${{ secrets.ORG_STANDARDS_PAT }}
 ```
+
+**What the token needs:**
+
+| Scope | Why |
+|---|---|
+| `pull-requests: write` on the **target repo** | Post inline review comments |
+| `contents: read` on the **standards repo** | Fetch standards and ADR docs |
+
+**Classic PAT:** the `repo` scope grants both (but is broader than needed — it includes write access to all repos).
+
+**Fine-grained PAT:** set `Contents: Read-only` on the standards repo and `Pull requests: Read and write` on the target repo. If the two repos are in **different organisations**, a personal fine-grained PAT is required — org-scoped fine-grained PATs cannot span organisations.
+
+> **Silent failure mode:** if the token lacks `contents: read` on the standards repo, every doc fetch returns a 404. PolicyBot treats 404 as "doc not found" and skips silently. The review runs with zero standards loaded and reports "no violations found" — a false clean result with no error message. Always verify the token has the right scopes before relying on review results.
 
 ### Updating standards
 
@@ -202,7 +215,7 @@ source:
 
   # github options
   repo: owner/repo              # required for type: github
-  ref: main                     # branch/tag/SHA, default: main
+  ref: main                     # branch/tag/SHA, default: main (see warning below)
 
 # Standards: map file globs → docs
 standards:
@@ -222,3 +235,5 @@ adrs:
 ```
 
 **Glob syntax** follows `.gitignore` rules: `**` matches any depth, `*` matches within one segment, `?` matches a single character.
+
+> **`ref` default is `main` — silent failure if wrong.** If your standards repo's default branch is `master`, `trunk`, or anything other than `main`, every doc fetch returns a 404. PolicyBot treats these as "doc not found" and skips silently — the review runs with zero standards and reports "no violations found." Always set `ref` explicitly to match your standards repo's actual default branch.

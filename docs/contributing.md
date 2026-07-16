@@ -80,6 +80,11 @@ policybot review [OPTIONS]
 
 **Exit codes:** `0` success · `1` fatal error · `2` error-severity violations found
 
+**Flag notes:**
+- `--repo` must be in `owner/repo` format (with a slash). A plain repo name without an owner causes an error.
+- `--repo` is required whenever `--pr` is used. Omitting it produces a generic "provide diff or PR" error, not a specific message about `--repo`.
+- When both `--diff` and `--pr` are supplied, `--diff` takes precedence and `--pr` is silently ignored. Use one or the other.
+
 ---
 
 ## Tests
@@ -142,5 +147,6 @@ uv run pytest --cov=policybot -q
 | Variable | Required | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Yes (for review) | Anthropic API key |
-| `GITHUB_TOKEN` | Yes (live PR) | GitHub token with `pull_requests: write` |
-| `POLICYBOT_MODEL` | No | Override Claude model (default: `claude-sonnet-4-5`) |
+| `GITHUB_TOKEN` | Yes (live PR) | GitHub token with `pull-requests: write` scope |
+
+To override the Claude model, use the `--model` CLI flag — there is no environment variable for this.

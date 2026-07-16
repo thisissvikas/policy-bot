@@ -51,6 +51,22 @@ async def test_get_pr_files(client: GitHubClient) -> None:
 
 
 @respx.mock
+async def test_get_pr_files_paginates(client: GitHubClient) -> None:
+    page1 = [{"filename": f"file_{i}.py"} for i in range(100)]
+    page2 = [{"filename": "file_last.py"}]
+    url = f"{BASE}/repos/owner/repo/pulls/2/files"
+    respx.get(url, params={"per_page": 100, "page": 1}).mock(
+        return_value=httpx.Response(200, json=page1)
+    )
+    respx.get(url, params={"per_page": 100, "page": 2}).mock(
+        return_value=httpx.Response(200, json=page2)
+    )
+    files = await client.get_pr_files("owner", "repo", 2)
+    assert len(files) == 101
+    assert "file_last.py" in files
+
+
+@respx.mock
 async def test_get_pr_head_sha(client: GitHubClient) -> None:
     respx.get(f"{BASE}/repos/owner/repo/pulls/1").mock(
         return_value=httpx.Response(200, json={"head": {"sha": "abc123def"}})

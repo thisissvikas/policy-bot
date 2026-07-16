@@ -45,11 +45,18 @@ class GitHubClient:
         return response.text
 
     async def get_pr_files(self, owner: str, repo: str, pr_number: int) -> list[str]:
-        data: list[dict[str, Any]] = await self._get(
-            f"/repos/{owner}/{repo}/pulls/{pr_number}/files",
-            params={"per_page": 100},
-        )
-        return [f["filename"] for f in data]
+        files: list[str] = []
+        page = 1
+        while True:
+            data: list[dict[str, Any]] = await self._get(
+                f"/repos/{owner}/{repo}/pulls/{pr_number}/files",
+                params={"per_page": 100, "page": page},
+            )
+            files.extend(f["filename"] for f in data)
+            if len(data) < 100:
+                break
+            page += 1
+        return files
 
     async def get_pr_head_sha(self, owner: str, repo: str, pr_number: int) -> str:
         data: dict[str, Any] = await self._get(f"/repos/{owner}/{repo}/pulls/{pr_number}")
