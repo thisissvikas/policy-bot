@@ -186,8 +186,13 @@ def test_apply_severity_normalizes_dot_slash_prefix() -> None:
     result = ReviewResult(
         violations=[
             Violation(
-                file="app.py", line=1, type="adr", message="x",
-                source_doc="./adrs/ADR-007.md", source_section="", severity="warning",
+                file="app.py",
+                line=1,
+                type="adr",
+                message="x",
+                source_doc="./adrs/ADR-007.md",
+                source_section="",
+                severity="warning",
             )
         ]
     )
@@ -200,8 +205,13 @@ def test_apply_severity_normalizes_backslash() -> None:
     result = ReviewResult(
         violations=[
             Violation(
-                file="app.py", line=1, type="standard", message="x",
-                source_doc="standards\\python.md", source_section="", severity="warning",
+                file="app.py",
+                line=1,
+                type="standard",
+                message="x",
+                source_doc="standards\\python.md",
+                source_section="",
+                severity="warning",
             )
         ]
     )

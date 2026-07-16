@@ -143,8 +143,11 @@ def test_get_diff_right_lines_multiple_files() -> None:
 def test_filter_postable_violations_keeps_valid() -> None:
     diff = "--- a/app/service.py\n+++ b/app/service.py\n@@ -1,1 +1,2 @@\n x=1\n+y=2\n"
     v_valid = Violation(
-        file="app/service.py", line=2, type="standard",
-        message="msg", source_doc="standards/python.md",
+        file="app/service.py",
+        line=2,
+        type="standard",
+        message="msg",
+        source_doc="standards/python.md",
     )
     postable, skipped = filter_postable_violations([v_valid], diff)
     assert len(postable) == 1
@@ -155,8 +158,11 @@ def test_filter_postable_violations_skips_removed_line() -> None:
     diff = "--- a/app/service.py\n+++ b/app/service.py\n@@ -1,2 +1,1 @@\n-removed\n kept\n"
     # Line 1 in the new file is the context line "kept"; "removed" has no right-side number
     v_bad = Violation(
-        file="app/service.py", line=99, type="standard",
-        message="msg", source_doc="standards/python.md",
+        file="app/service.py",
+        line=99,
+        type="standard",
+        message="msg",
+        source_doc="standards/python.md",
     )
     postable, skipped = filter_postable_violations([v_bad], diff)
     assert len(postable) == 0
@@ -166,8 +172,11 @@ def test_filter_postable_violations_skips_removed_line() -> None:
 def test_filter_postable_violations_unknown_file_skipped() -> None:
     diff = "--- a/other.py\n+++ b/other.py\n@@ -1,1 +1,1 @@\n+x=1\n"
     v = Violation(
-        file="nonexistent.py", line=1, type="standard",
-        message="msg", source_doc="standards/python.md",
+        file="nonexistent.py",
+        line=1,
+        type="standard",
+        message="msg",
+        source_doc="standards/python.md",
     )
     postable, skipped = filter_postable_violations([v], diff)
     assert len(postable) == 0
